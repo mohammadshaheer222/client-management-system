@@ -46,9 +46,10 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: unknown) {
     console.error('POST /api/members error:', error);
-    const msg = error instanceof Error && error.message.includes('duplicate')
+    const details = error instanceof Error ? error.message : String(error);
+    const msg = details.includes('duplicate')
       ? 'A member with that name already exists'
-      : 'Failed to create member';
+      : `Failed to create member: ${details}`;
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
