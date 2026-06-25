@@ -23,6 +23,7 @@ export interface ILead extends Document {
   status: LeadStatus;
   lastFollowupDate?: Date;
   nextFollowupDate?: Date;
+  followupHistory: Date[];
   creatorAssigned: string;
   remarks: string;
   closureDate?: Date;
@@ -96,6 +97,10 @@ const LeadSchema: Schema<ILead> = new Schema(
     },
     lastFollowupDate: { type: Date },
     nextFollowupDate: { type: Date },
+    followupHistory: {
+      type: [Date],
+      default: [],
+    },
     creatorAssigned: {
       type: String,
       trim: true,

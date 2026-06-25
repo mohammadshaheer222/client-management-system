@@ -32,6 +32,24 @@
   --header-height: 64px;
 }
 
+/* ─── Light Mode Variables ────────────────────────────────────── */
+[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(15, 23, 42, 0.04);
+  --bg-card-hover: rgba(15, 23, 42, 0.07);
+  --bg-input: rgba(15, 23, 42, 0.05);
+
+  --border: rgba(15, 23, 42, 0.08);
+  --border-active: rgba(79, 142, 247, 0.6);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --shadow-card: 0 4px 20px rgba(15, 23, 42, 0.06);
+}
+
 /* ─── Reset & Base ───────────────────────────────────────────── */
 *,
 *::before,
@@ -335,7 +353,7 @@ body::before {
 }
 
 .form-select option {
-  background: #0e1426;
+  background: var(--bg-secondary);
   color: var(--text-primary);
 }
 
@@ -384,6 +402,10 @@ body::before {
   z-index: 200;
   padding: 0 8px;
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+[data-theme='light'] .bottom-nav {
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .nav-item {

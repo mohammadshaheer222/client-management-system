@@ -1,9 +1,14 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { Users, AlertCircle, Clock, TrendingUp, Plus, ChevronRight, Camera } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
-import { LeadStatus } from '@/models/Lead';
+import Lead, { LeadStatus } from '@/models/Lead';
+import dbConnect from '@/lib/mongodb';
+import ThemeToggle from '@/components/ThemeToggle';
+
+dayjs.extend(relativeTime);
 
 export const metadata: Metadata = {
   title: 'Dashboard | UpReels CRM',
@@ -31,11 +36,59 @@ interface StatsData {
 
 async function getStats(): Promise<StatsData | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/leads/stats`, { cache: 'no-store' });
-    const data = await res.json();
-    return data.success ? data.data : null;
-  } catch {
+    await dbConnect();
+
+    const totalLeads = await Lead.countDocuments();
+
+    const statusCounts = await Lead.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+
+    const statusMap: Record<string, number> = {};
+    statusCounts.forEach((s) => {
+      statusMap[s._id] = s.count;
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Leads with overdue follow-up (nextFollowupDate < today)
+    const overdueFollowups = await Lead.countDocuments({
+      nextFollowupDate: { $lt: today },
+      status: { $nin: ['Completed', 'Lost'] },
+    });
+
+    // Leads with follow-up due today
+    const todayFollowups = await Lead.countDocuments({
+      nextFollowupDate: { $gte: today, $lt: tomorrow },
+    });
+
+    // Leads created this month
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const newThisMonth = await Lead.countDocuments({
+      createdAt: { $gte: startOfMonth },
+    });
+
+    // Recent leads
+    const recentLeads = await Lead.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    return JSON.parse(
+      JSON.stringify({
+        totalLeads,
+        statusMap,
+        overdueFollowups,
+        todayFollowups,
+        newThisMonth,
+        recentLeads,
+      })
+    ) as StatsData;
+  } catch (error) {
+    console.error('getStats error:', error);
     return null;
   }
 }
@@ -85,12 +138,15 @@ export default async function DashboardPage() {
               <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>{greeting()} 👋</div>
             </div>
           </div>
-          <Link href="/leads/new">
-            <button className="btn btn-primary btn-sm" style={{ gap: 6 }}>
-              <Plus size={14} />
-              New Lead
-            </button>
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ThemeToggle />
+            <Link href="/leads/new">
+              <button className="btn btn-primary btn-sm" style={{ gap: 6 }}>
+                <Plus size={14} />
+                New Lead
+              </button>
+            </Link>
+          </div>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8 }}>
           {dayjs().format('dddd, MMMM D YYYY')}

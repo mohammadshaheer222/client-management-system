@@ -54,20 +54,34 @@ export async function PUT(
     delete body.leadId;
 
     let lead = null;
+    let leadDoc = null;
 
     // Try slug first
-    const existing = await Lead.findOne({ leadId: id.toUpperCase() }).lean();
+    const existing = await Lead.findOne({ leadId: id.toUpperCase() });
     if (existing) {
-      lead = await Lead.findByIdAndUpdate(
-        (existing as { _id: mongoose.Types.ObjectId })._id,
-        body,
-        { new: true, runValidators: true }
-      ).lean();
+      leadDoc = existing;
     } else if (mongoose.isValidObjectId(id)) {
-      lead = await Lead.findByIdAndUpdate(id, body, {
-        new: true,
-        runValidators: true,
-      }).lean();
+      leadDoc = await Lead.findById(id);
+    }
+
+    if (leadDoc) {
+      // If lastFollowupDate is changing, save the old one to history
+      if (body.lastFollowupDate && leadDoc.lastFollowupDate) {
+        const oldTime = new Date(leadDoc.lastFollowupDate).getTime();
+        const newTime = new Date(body.lastFollowupDate).getTime();
+        if (oldTime !== newTime) {
+          const history = leadDoc.followupHistory || [];
+          const alreadyExists = history.some((d: any) => new Date(d).getTime() === oldTime);
+          if (!alreadyExists) {
+            leadDoc.followupHistory.push(leadDoc.lastFollowupDate);
+          }
+        }
+      }
+
+      // Apply other fields
+      Object.assign(leadDoc, body);
+      await leadDoc.save();
+      lead = leadDoc.toObject();
     }
 
     if (!lead) {

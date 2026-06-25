@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { Camera, GitBranch, Database, Phone } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
   title: 'Settings | UpReels CRM',
@@ -13,14 +14,20 @@ export default function SettingsPage() {
           padding: '28px 16px 20px',
           borderBottom: '1px solid var(--border)',
           background: 'linear-gradient(160deg, rgba(139,92,246,0.1) 0%, transparent 80%)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}
       >
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-          Settings
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-          UpReels CRM Configuration
-        </p>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+            Settings
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+            UpReels CRM Configuration
+          </p>
+        </div>
+        <ThemeToggle />
       </div>
 
       <div className="page-content">

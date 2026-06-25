@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import LeadForm from '@/components/LeadForm';
-import { ILead } from '@/models/Lead';
+import Lead, { ILead } from '@/models/Lead';
+import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +15,19 @@ interface PageProps {
 
 async function getLead(id: string): Promise<ILead | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/leads/${id}`, { cache: 'no-store' });
-    const data = await res.json();
-    return data.success ? data.data : null;
-  } catch {
+    await dbConnect();
+    // Try leadId slug first
+    const bySlug = await Lead.findOne({ leadId: id.toUpperCase() }).lean();
+    if (bySlug) return JSON.parse(JSON.stringify(bySlug)) as ILead;
+
+    // Fallback to MongoDB _id (for any existing links)
+    if (mongoose.isValidObjectId(id)) {
+      const byId = await Lead.findById(id).lean();
+      if (byId) return JSON.parse(JSON.stringify(byId)) as ILead;
+    }
+    return null;
+  } catch (error) {
+    console.error('getLead error:', error);
     return null;
   }
 }

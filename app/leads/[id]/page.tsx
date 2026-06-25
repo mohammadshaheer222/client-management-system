@@ -2,13 +2,19 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import {
   ArrowLeft, Phone, MapPin, DollarSign, User, Tag,
   Calendar, Clock, Pencil, MessageSquare, CheckCircle2, Trash2
 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import DeleteLeadButton from './DeleteLeadButton';
-import { ILead, LeadStatus } from '@/models/Lead';
+import Lead, { ILead, LeadStatus } from '@/models/Lead';
+import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
+import ThemeToggle from '@/components/ThemeToggle';
+
+dayjs.extend(relativeTime);
 
 export const dynamic = 'force-dynamic';
 
@@ -18,11 +24,19 @@ interface PageProps {
 
 async function getLead(id: string): Promise<ILead | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/leads/${id}`, { cache: 'no-store' });
-    const data = await res.json();
-    return data.success ? data.data : null;
-  } catch {
+    await dbConnect();
+    // Try leadId slug first
+    const bySlug = await Lead.findOne({ leadId: id.toUpperCase() }).lean();
+    if (bySlug) return JSON.parse(JSON.stringify(bySlug)) as ILead;
+
+    // Fallback to MongoDB _id (for any existing links)
+    if (mongoose.isValidObjectId(id)) {
+      const byId = await Lead.findById(id).lean();
+      if (byId) return JSON.parse(JSON.stringify(byId)) as ILead;
+    }
+    return null;
+  } catch (error) {
+    console.error('getLead error:', error);
     return null;
   }
 }
@@ -91,12 +105,15 @@ export default async function LeadDetailPage({ params }: PageProps) {
               All Leads
             </button>
           </Link>
-          <Link href={`/leads/${slug}/edit`}>
-            <button className="btn btn-ghost btn-sm">
-              <Pencil size={14} />
-              Edit
-            </button>
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ThemeToggle />
+            <Link href={`/leads/${slug}/edit`}>
+              <button className="btn btn-ghost btn-sm">
+                <Pencil size={14} />
+                Edit
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* Avatar + Name */}
@@ -233,6 +250,34 @@ export default async function LeadDetailPage({ params }: PageProps) {
             value={lead.closureDate ? dayjs(lead.closureDate).format('DD MMM YYYY') : undefined}
             icon={Calendar}
           />
+          {lead.followupHistory && lead.followupHistory.length > 0 && (
+            <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                Previous Follow-up Dates
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {lead.followupHistory.map((d: any, index: number) => (
+                  <span
+                    key={index}
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--text-secondary)',
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '99px',
+                      padding: '4px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Calendar size={10} color="var(--text-muted)" />
+                    {dayjs(d).format('DD MMM YYYY')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Remarks ── */}

@@ -5,6 +5,7 @@ import { Search, Users, SlidersHorizontal, Plus } from 'lucide-react';
 import Link from 'next/link';
 import LeadCard from '@/components/LeadCard';
 import { LeadStatus } from '@/models/Lead';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const STATUS_FILTERS: (LeadStatus | 'All')[] = [
   'All', 'New Lead', 'Contacted', 'Quotation Sent', 'Follow-up', 'Confirmed', 'Completed', 'Lost'
@@ -78,12 +79,15 @@ export default function LeadsPage() {
               {leads.length} lead{leads.length !== 1 ? 's' : ''} found
             </p>
           </div>
-          <Link href="/leads/new">
-            <button className="btn btn-primary btn-sm">
-              <Plus size={14} />
-              Add
-            </button>
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ThemeToggle />
+            <Link href="/leads/new">
+              <button className="btn btn-primary btn-sm">
+                <Plus size={14} />
+                Add
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* ── Search ── */}

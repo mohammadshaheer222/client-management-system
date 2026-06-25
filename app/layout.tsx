@@ -31,6 +31,18 @@ export default function RootLayout({
         <meta name="theme-color" content="#080c1a" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const savedTheme = localStorage.getItem('theme') || 'dark';
+                  document.documentElement.setAttribute('data-theme', savedTheme);
+                } catch (e) {}
+              })()
+            `,
+          }}
+        />
       </head>
       <body>
         <div className="app-container">
