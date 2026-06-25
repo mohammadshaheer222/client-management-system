@@ -5,7 +5,7 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'upreels-crm-fallback-secret'
 );
 const COOKIE_NAME = 'upr_session';
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/members'];
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/members', '/api/auth/debug'];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -28,7 +28,8 @@ export async function proxy(request: NextRequest) {
   try {
     await jwtVerify(token, SECRET);
     return NextResponse.next();
-  } catch {
+  } catch (err) {
+    console.error('proxy token verify error:', err);
     const res = NextResponse.redirect(new URL('/login', request.url));
     res.cookies.delete(COOKIE_NAME);
     return res;

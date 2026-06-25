@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import dbConnect from '@/lib/mongodb';
 import Member from '@/models/Member';
 import { hashPin, signSession, COOKIE_NAME } from '@/lib/auth';
@@ -37,12 +38,8 @@ export async function POST(request: NextRequest) {
       role: member.role,
     });
 
-    const res = NextResponse.json({
-      success: true,
-      data: { name: member.name, color: member.color, role: member.role },
-    });
-
-    res.cookies.set(COOKIE_NAME, token, {
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -50,7 +47,10 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    return res;
+    return NextResponse.json({
+      success: true,
+      data: { name: member.name, color: member.color, role: member.role },
+    });
   } catch (error) {
     console.error('POST /api/auth/login error:', error);
     return NextResponse.json(
