@@ -3,6 +3,8 @@ import dbConnect from '@/lib/mongodb';
 import Lead from '@/models/Lead';
 import { getSession } from '@/lib/auth';
 
+// Schema rebuild touch
+
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
@@ -10,6 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const creator = searchParams.get('creator') || '';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
@@ -25,8 +28,26 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    if (status && status !== 'All') {
+    if (status && status.toLowerCase() !== 'all') {
       query.status = status;
+    }
+
+    if (creator && creator.toLowerCase() !== 'all') {
+      if (creator.toLowerCase() === 'not assigned') {
+        query.$and = [
+          ...(query.$and || []),
+          {
+            $or: [
+              { creatorAssigned: '' },
+              { creatorAssigned: { $exists: false } },
+              { creatorAssigned: null },
+              { creatorAssigned: /not assigned/i }
+            ]
+          }
+        ];
+      } else {
+        query.creatorAssigned = creator;
+      }
     }
 
     const sortOptions: Record<string, 1 | -1> = {

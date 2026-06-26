@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import {
   ArrowLeft, Phone, MapPin, DollarSign, User, Tag,
-  Calendar, Clock, Pencil, MessageSquare, CheckCircle2, Trash2
+  Calendar, Clock, Pencil, MessageSquare, CheckCircle2
 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import DeleteLeadButton from './DeleteLeadButton';
@@ -226,7 +226,17 @@ export default async function LeadDetailPage({ params }: PageProps) {
           </div>
           <DetailRow label="Source" value={lead.source} />
           <DetailRow label="Creator" value={lead.creatorAssigned} />
-          <DetailRow label="Date Added" value={dayjs(lead.date).format('DD MMM YYYY')} icon={Calendar} />
+          <DetailRow
+            label="Program Date"
+            value={
+              lead.date
+                ? /^\d{4}-\d{2}-\d{2}/.test(lead.date) && dayjs(lead.date).isValid()
+                  ? dayjs(lead.date).format('DD MMM YYYY')
+                  : lead.date
+                : undefined
+            }
+            icon={Calendar}
+          />
         </div>
 
         {/* ── Follow-up ── */}
@@ -256,7 +266,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 Previous Follow-up Dates
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {lead.followupHistory.map((d: any, index: number) => (
+                {lead.followupHistory.map((d: string | Date, index: number) => (
                   <span
                     key={index}
                     style={{

@@ -41,6 +41,7 @@ export async function GET(
   }
 }
 
+// Trigger hot reload for schema rebuild
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,11 +71,12 @@ export async function PUT(
         const oldTime = new Date(leadDoc.lastFollowupDate).getTime();
         const newTime = new Date(body.lastFollowupDate).getTime();
         if (oldTime !== newTime) {
-          const history = leadDoc.followupHistory || [];
-          const alreadyExists = history.some((d: any) => new Date(d).getTime() === oldTime);
+          const history = body.followupHistory || leadDoc.followupHistory || [];
+          const alreadyExists = history.some((d: string | Date) => new Date(d).getTime() === oldTime);
           if (!alreadyExists) {
-            leadDoc.followupHistory.push(leadDoc.lastFollowupDate);
+            history.push(leadDoc.lastFollowupDate);
           }
+          body.followupHistory = history;
         }
       }
 

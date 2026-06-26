@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { Phone, MapPin, DollarSign, AlertCircle, Clock } from 'lucide-react';
+import { Phone, MapPin, DollarSign, AlertCircle, Clock, User, Calendar } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { LeadStatus } from '@/models/Lead';
 
@@ -29,8 +29,10 @@ interface Lead {
   budget?: string;
   status: LeadStatus;
   assignedTo?: string;
+  creatorAssigned?: string;
   nextFollowupDate?: string;
   createdAt: string;
+  date?: string;
 }
 
 interface LeadCardProps {
@@ -75,6 +77,29 @@ export default function LeadCard({ lead }: LeadCardProps) {
               <span>{lead.budget}</span>
             </div>
           )}
+          {lead.date && (
+            <div className="lead-meta-row">
+              <Calendar size={13} style={{ color: 'var(--accent-blue)' }} />
+              <span style={{ fontWeight: 500 }}>
+                Program: {lead.date}
+              </span>
+            </div>
+          )}
+          <div className="lead-meta-row" style={{ marginTop: 2 }}>
+            <User size={13} style={{ opacity: lead.creatorAssigned ? 1 : 0.4 }} />
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: lead.creatorAssigned ? 600 : 400,
+                color: lead.creatorAssigned
+                  ? 'var(--accent)'
+                  : 'var(--text-muted)',
+                fontStyle: lead.creatorAssigned ? 'normal' : 'italic',
+              }}
+            >
+              {lead.creatorAssigned || 'Not Assigned'}
+            </span>
+          </div>
         </div>
 
         <div className="lead-card-footer">

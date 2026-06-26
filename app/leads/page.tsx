@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Users, SlidersHorizontal, Plus } from 'lucide-react';
+import { Search, Users, SlidersHorizontal, Plus, User } from 'lucide-react';
 import Link from 'next/link';
 import LeadCard from '@/components/LeadCard';
 import { LeadStatus } from '@/models/Lead';
@@ -21,8 +21,10 @@ interface Lead {
   budget?: string;
   status: LeadStatus;
   assignedTo?: string;
+  creatorAssigned?: string;
   nextFollowupDate?: string;
   createdAt: string;
+  date?: string;
 }
 
 export default function LeadsPage() {
@@ -30,6 +32,8 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState<LeadStatus | 'All'>('All');
+  const [activeCreator, setActiveCreator] = useState<string>('All');
+  const [memberNames, setMemberNames] = useState<string[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Debounce search
@@ -38,12 +42,23 @@ export default function LeadsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch member names for creator filter
+  useEffect(() => {
+    fetch('/api/members')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setMemberNames(d.data.map((m: { name: string }) => m.name));
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (activeStatus !== 'All') params.set('status', activeStatus);
+      if (activeCreator !== 'All') params.set('creator', activeCreator);
 
       const res = await fetch(`/api/leads?${params.toString()}`);
       const data = await res.json();
@@ -53,9 +68,10 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, activeStatus]);
+  }, [debouncedSearch, activeStatus, activeCreator]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLeads();
   }, [fetchLeads]);
 
@@ -103,8 +119,8 @@ export default function LeadsPage() {
           />
         </div>
 
-        {/* ── Filter Pills ── */}
-        <div className="filter-pills" style={{ paddingBottom: 16 }}>
+        {/* ── Filter Pills – Status ── */}
+        <div className="filter-pills" style={{ paddingBottom: 8 }}>
           {STATUS_FILTERS.map((s) => (
             <button
               key={s}
@@ -113,6 +129,22 @@ export default function LeadsPage() {
               id={`filter-${s.replace(/\s/g, '-').toLowerCase()}`}
             >
               {s}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Filter Pills – Creator ── */}
+        <div className="filter-pills" style={{ paddingBottom: 16 }}>
+          {(['All', 'Not Assigned', ...memberNames] as string[]).map((c) => (
+            <button
+              key={c}
+              className={`filter-pill ${activeCreator === c ? 'active' : ''}`}
+              onClick={() => setActiveCreator(c)}
+              id={`creator-filter-${c.replace(/\s/g, '-').toLowerCase()}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              {c === 'All' ? null : <User size={11} />}
+              {c === 'All' ? 'All Creators' : c}
             </button>
           ))}
         </div>

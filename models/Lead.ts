@@ -11,7 +11,7 @@ export type LeadStatus =
 
 export interface ILead extends Document {
   leadId: string;
-  date: Date;
+  date: string;
   clientName: string;
   phoneNumber: string;
   requirement: string;
@@ -39,8 +39,8 @@ const LeadSchema: Schema<ILead> = new Schema(
       index: true,
     },
     date: {
-      type: Date,
-      default: Date.now,
+      type: String,
+      default: () => new Date().toISOString().split('T')[0],
     },
     clientName: {
       type: String,
@@ -124,7 +124,10 @@ LeadSchema.pre('save', async function () {
   }
 });
 
-const Lead: Model<ILead> =
-  mongoose.models.Lead || mongoose.model<ILead>('Lead', LeadSchema);
+if (process.env.NODE_ENV === 'development') {
+  delete (mongoose.models as any).Lead;
+}
+
+const Lead = mongoose.models.Lead || mongoose.model<ILead>('Lead', LeadSchema);
 
 export default Lead;

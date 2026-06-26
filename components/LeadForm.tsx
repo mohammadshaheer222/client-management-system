@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, X } from 'lucide-react';
+import { Save, X, User } from 'lucide-react';
 
 const STATUS_OPTIONS = [
   'New Lead',
@@ -27,6 +27,8 @@ interface LeadFormData {
   creatorAssigned: string;
   remarks: string;
   closureDate: string;
+  followupHistory?: string[];
+  date: string;
 }
 
 interface LeadFormProps {
@@ -49,6 +51,8 @@ const emptyForm: LeadFormData = {
   creatorAssigned: '',
   remarks: '',
   closureDate: '',
+  followupHistory: [],
+  date: '',
 };
 
 function toInputDate(val?: string): string {
@@ -68,9 +72,55 @@ export default function LeadForm({ initialData, leadId, mode, onCancel }: LeadFo
     lastFollowupDate: toInputDate(initialData?.lastFollowupDate),
     nextFollowupDate: toInputDate(initialData?.nextFollowupDate),
     closureDate: toInputDate(initialData?.closureDate),
+    followupHistory: (initialData?.followupHistory || []).map((d) => toInputDate(String(d))),
+    date: initialData?.date || toInputDate(new Date().toISOString()),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [members, setMembers] = useState<string[]>([]);
+
+  // Derive if current value is a known member / reserved value, or a custom free-text entry
+  const isCustomCreator =
+    form.creatorAssigned !== '' &&
+    form.creatorAssigned !== 'Not Assigned' &&
+    !members.includes(form.creatorAssigned);
+  const [creatorSelectValue, setCreatorSelectValue] = useState(
+    isCustomCreator ? '__custom__' : (form.creatorAssigned || 'Not Assigned')
+  );
+  const [customCreator, setCustomCreator] = useState(isCustomCreator ? form.creatorAssigned : '');
+
+  useEffect(() => {
+    fetch('/api/members')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          const names: string[] = d.data.map((m: { name: string }) => m.name);
+          setMembers(names);
+          // If current value is a known member, sync select
+          if (names.includes(form.creatorAssigned)) {
+            setCreatorSelectValue(form.creatorAssigned);
+          }
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreatorSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setCreatorSelectValue(val);
+    if (val === '__custom__') {
+      setForm((prev) => ({ ...prev, creatorAssigned: customCreator }));
+    } else {
+      setCustomCreator('');
+      setForm((prev) => ({ ...prev, creatorAssigned: val === 'Not Assigned' ? '' : val }));
+    }
+  };
+
+  const handleCustomCreatorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomCreator(e.target.value);
+    setForm((prev) => ({ ...prev, creatorAssigned: e.target.value }));
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -93,6 +143,9 @@ export default function LeadForm({ initialData, leadId, mode, onCancel }: LeadFo
       if (!payload.lastFollowupDate) delete (payload as Partial<LeadFormData>).lastFollowupDate;
       if (!payload.nextFollowupDate) delete (payload as Partial<LeadFormData>).nextFollowupDate;
       if (!payload.closureDate) delete (payload as Partial<LeadFormData>).closureDate;
+      if (payload.followupHistory) {
+        payload.followupHistory = payload.followupHistory.filter((d) => !!d);
+      }
 
       const res = await fetch(url, {
         method,
@@ -219,15 +272,45 @@ export default function LeadForm({ initialData, leadId, mode, onCancel }: LeadFo
       </div>
 
       <div className="form-group">
-        <label className="form-label" htmlFor="creatorAssigned">Creator Assigned</label>
+        <label className="form-label" htmlFor="date">Program Date</label>
         <input
-          id="creatorAssigned"
-          name="creatorAssigned"
+          id="date"
+          name="date"
           className="form-input"
-          placeholder="Photographer / Videographer"
-          value={form.creatorAssigned}
+          placeholder="e.g. 2026-06-26 or 25th June"
+          value={form.date}
           onChange={handleChange}
         />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label" htmlFor="creatorAssigned">
+          <User size={13} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle' }} />
+          Creator Assigned
+        </label>
+        <select
+          id="creatorAssigned"
+          className="form-select"
+          value={creatorSelectValue}
+          onChange={handleCreatorSelect}
+        >
+          <option value="Not Assigned">— Not Assigned —</option>
+          {members.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+          <option value="__custom__">Custom...</option>
+        </select>
+        {creatorSelectValue === '__custom__' && (
+          <input
+            id="creatorAssignedCustom"
+            className="form-input"
+            placeholder="Type photographer / videographer name"
+            value={customCreator}
+            onChange={handleCustomCreatorChange}
+            style={{ marginTop: 8 }}
+            autoFocus
+          />
+        )}
       </div>
 
       <div className="form-group">
@@ -264,6 +347,55 @@ export default function LeadForm({ initialData, leadId, mode, onCancel }: LeadFo
           style={{ colorScheme: 'dark' }}
         />
       </div>
+
+      {/* Previous Follow-up Dates */}
+      {mode === 'edit' && (
+        <div className="form-group" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border)', marginBottom: '16px' }}>
+          <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Previous Follow-up Dates</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {(form.followupHistory || []).map((hDate, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={hDate}
+                  onChange={(e) => {
+                    const newHist = [...(form.followupHistory || [])];
+                    newHist[idx] = e.target.value;
+                    setForm((prev) => ({ ...prev, followupHistory: newHist }));
+                  }}
+                  style={{ colorScheme: 'dark', flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    const newHist = (form.followupHistory || []).filter((_, i) => i !== idx);
+                    setForm((prev) => ({ ...prev, followupHistory: newHist }));
+                  }}
+                  style={{ padding: '8px 12px', height: '42px', minWidth: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <X size={15} style={{ color: '#f87171' }} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                const todayStr = toInputDate(new Date().toISOString());
+                setForm((prev) => ({
+                  ...prev,
+                  followupHistory: [...(prev.followupHistory || []), todayStr],
+                }));
+              }}
+              style={{ alignSelf: 'flex-start', marginTop: '4px', fontSize: '11px', padding: '6px 12px' }}
+            >
+              + Add Date
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="form-group">
         <label className="form-label" htmlFor="nextFollowupDate">Next Follow-up Date</label>
